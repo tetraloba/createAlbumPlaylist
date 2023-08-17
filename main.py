@@ -1,35 +1,33 @@
-from os import listdir, path
+import glob
+from os import path
 
 from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
 
-# ./Artist/Album/Audio.flac と仮定する。
-audio_exts = ['mp3', 'flac']
+# root_dir_path = "../musicServer/src/music"
+# playlist_dir_path = "../musicServer/src/playlists"
+playlist_dir_path = "../playlists2"
 
-def create_playlist(album_path):
-    playlist = ""
-    audio_files = [path.join(album_path, audio_file) for audio_file in listdir(album_path) if path.splitext(audio_file)[1][1:] in audio_exts]
-    audio_files_dict = dict()
-    for audio_file in audio_files:
-        if path.splitext(audio_file)[1][1:] == 'mp3':
-            audio_files_dict[int(str(MP3(audio_file).tags['TRCK']).split('/')[0])] = audio_file
-        else:
-            audio_files_dict[int(FLAC(audio_file).tags['tracknumber'][0])] = audio_file
-    audio_files_sorted = sorted(audio_files_dict.items())
-    for audio_file in audio_files_sorted:
-        playlist += audio_file[1].replace(root_dir_path + '/', '') + "\n"
-            # replace, 100%上手く行く保証は有るか？ パス中に../なんて出てこないか。
-            # こういう文字列操作って効率悪かった気もする。
-    return playlist
-
+# コマンドライン引数が有ればコマンドライン引数のパス、なければカレントディレクトリから。
+root_dir_path = "./"
+# デバッグ用
 root_dir_path = "../musicServer/src/music"
-playlist_dir_path = "../musicServer/src/playlists"
 
-artists = [i for i in listdir(root_dir_path) if '.' not in i]
-for artist in artists:
-    artist_path = path.join(root_dir_path, artist)
-    albums = listdir(artist_path)
-    for album in albums:
-        with open(path.join(playlist_dir_path, album + '.m3u'), "w") as f:
-            print(album)
-            f.write(create_playlist(path.join(artist_path, album)))
+# {album:{track_num:auido}}
+albums = dict()
+
+# FLACファイルを取得・解析してalbumsに登録
+flac_file_list = glob.glob('**/*.flac', recursive=True)
+for flac_file in flac_file_list:
+    albums[str(FLAC(flac_file).tags['album'][0])] = {**albums.get(str(FLAC(flac_file).tags['album'][0]), dict()) , **{int(FLAC(flac_file).tags['tracknumber'][0]):flac_file}}
+# mp3ファイルを取得・解析してalbumsに登録
+mp3_file_list = glob.glob('**/*.mp3', recursive=True)
+for mp3_file in mp3_file_list:
+    albums[str(MP3(mp3_file).tags['TALB'][0])] = {**albums.get(str(MP3(mp3_file).tags['TALB'][0]), dict()), **{int(str(MP3(mp3_file).tags['TRCK'][0]).split('/')[0]):mp3_file}}
+
+# albumsに基づいてプレイリストを書き出し
+for album, tracks in albums.items():
+    with open(path.join(playlist_dir_path, album + '.m3u'), "w") as f:
+        for number, audio in sorted(tracks.items()):
+            f.write(audio + '\n')
+
