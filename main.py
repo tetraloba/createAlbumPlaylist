@@ -27,7 +27,7 @@ for mp3_file in mp3_file_list:
 
 # albumsに基づいてプレイリストを書き出し
 for album, tracks in albums.items():
-    with open(path.join(playlist_dir_path, album + '.m3u'), "w") as f:
+    with open(path.join(playlist_dir_path, album.replace('/', '_') + '.m3u'), "w") as f:
         for number, audio in sorted(tracks.items()):
             f.write(audio + '\n')
 
