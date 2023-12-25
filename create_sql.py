@@ -43,8 +43,8 @@ for album, tracks in albums.items():
                 if tags.get('tracktotal', None):
                     album_track_total = int(tags['tracktotal'][0])
                 else:
-                    album_track_total = len(tracks)
-                album_year = tags['date'][0]
+                    album_track_total = max(int(tags['tracknumber'][0]), len(tracks), album_track_total)
+                album_year = str(tags['date'][0])
                 album_length += float(str(FLAC(audio).info.length))
             elif audio[-1] == '3': #MP3
                 tags = MP3(audio).tags
@@ -55,19 +55,25 @@ for album, tracks in albums.items():
                 if 2 <= len(str(tags['TRCK'][0]).split('/')):
                     album_track_total = int(str(tags['TRCK'][0]).split('/')[1])
                 else:
-                    album_track_total = len(tracks)
-                album_year = int(str(tags['TDRC'][0]))
+                    album_track_total = max(int(str(tags['TRCK'][0]).split('/')[0]), len(tracks), album_track_total)
+                album_year = str(tags['TDRC'][0])
                 album_length += float(str(MP3(audio).info.length))
         if len(tracks) < album_track_total:
             print(f"トラック数が不足。 {album}: {len(tracks)}/{album_track_total}")
-        album_length = datetime.timedelta(seconds=int(album_length))
+        album = album.replace("'", "\\'")
+        album_artist = album_artist.replace("'", "\\'")
+        if album_year != '':
+            album_year = "'" + str(datetime.date(int(album_year), 1, 1)) + "'"
+        else:
+            album_year = 'NULL'
+        album_length = str(datetime.timedelta(seconds=int(album_length)))
         f.write("INSERT INTO albums VALUES (\n"
-                f"\t{album},\n"
-                f"\t{album_artist},\n"
+                f"\t'{album}',\n"
+                f"\t'{album_artist}',\n"
                 f"\t{album_track_total},\n"
                 f"\t{album_year},\n"
-                f"\t{album_length},\n"
-                "\tDEFAULT,\n"
+                f"\t'{album_length}',\n"
+                "\tDEFAULT\n"
                 ");\n")
             # f.write(audio + '\n')
 
