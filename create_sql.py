@@ -27,8 +27,10 @@ for mp3_file in mp3_file_list:
     albums[str(MP3(mp3_file).tags['TALB'][0])] = {**albums.get(str(MP3(mp3_file).tags['TALB'][0]), dict()), **{int(str(MP3(mp3_file).tags['TRCK'][0]).split('/')[0]):mp3_file}}
 
 # albumsに基づいてプレイリストを書き出し
-for album, tracks in albums.items():
-    with open(path.join(playlist_dir_path, album.replace('/', '_') + '.sql'), "w") as f:
+with open(path.join(playlist_dir_path, 'insert_albums' + '.sql'), "w") as f:
+    f.write("INSERT INTO albums VALUES \n")
+    first = True
+    for album, tracks in albums.items():
         album_artist = ''
         album_track_total = 0
         album_year = 0
@@ -67,13 +69,17 @@ for album, tracks in albums.items():
         else:
             album_year = 'NULL'
         album_length = str(datetime.timedelta(seconds=int(album_length)))
-        f.write("INSERT INTO albums VALUES (\n"
-                f"\t'{album}',\n"
-                f"\t'{album_artist}',\n"
-                f"\t{album_track_total},\n"
-                f"\t{album_year},\n"
-                f"\t'{album_length}',\n"
-                "\tDEFAULT\n"
-                ");\n")
+        if not first:
+            f.write(',\n')
+        first = False
+        f.write("("
+                f"'{album}',"
+                f"'{album_artist}',"
+                f"{album_track_total},"
+                f"{album_year},"
+                f"'{album_length}',"
+                "DEFAULT"
+                ")")
             # f.write(audio + '\n')
+    f.write(";\n")
 
