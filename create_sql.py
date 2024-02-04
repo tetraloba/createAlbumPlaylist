@@ -9,10 +9,14 @@ from mutagen.mp3 import MP3
 playlist_dir_path = "../musicServer/src/playlists"
 # playlist_dir_path = "../playlists2"
 
-# コマンドライン引数が有ればコマンドライン引数のパス、なければカレントディレクトリから。
+# コマンドライン引数が有ればコマンドライン引数のパス、なければカレントディレクトリから。 #todo
 root_dir_path = "./"
 # デバッグ用
 root_dir_path = "../musicServer/src/music"
+
+# SQL用にシングルクォートをエスケープ処理する
+def escape_sq(s:str):
+    return s.replace("'", "''")
 
 # {album:{track_num:auido}}
 albums = dict()
@@ -62,8 +66,8 @@ with open(path.join(playlist_dir_path, 'insert_albums' + '.sql'), "w") as f:
                 album_length += float(str(MP3(audio).info.length))
         if len(tracks) < album_track_total:
             print(f"トラック数が不足。 {album}: {len(tracks)}/{album_track_total}")
-        album = album.replace("'", "\\'")
-        album_artist = album_artist.replace("'", "\\'")
+        album = escape_sq(album)
+        album_artist = escape_sq(album_artist)
         if album_year != '':
             album_year = "'" + str(datetime.date(int(album_year), 1, 1)) + "'"
         else:
@@ -83,3 +87,50 @@ with open(path.join(playlist_dir_path, 'insert_albums' + '.sql'), "w") as f:
             # f.write(audio + '\n')
     f.write(";\n")
 
+
+with open(path.join(playlist_dir_path, 'insert_audios' + '.sql'), 'w') as f:
+    f.write("INSERT INTO audio_meta VALUES \n")
+    first = True
+    for flac_file in flac_file_list:
+        tags = FLAC(flac_file).tags
+        if not first:
+            f.write(',\n')
+        first = False
+        # メタデータに含まれるアポストロフィをエスケープ処理
+        title = escape_sq(str(tags['title'][0]))
+        artist = escape_sq(str(tags['artist'][0]))
+        album = escape_sq(str(tags['album'][0]))
+        file_path = escape_sq(flac_file)
+        length = str(datetime.timedelta(seconds=int(FLAC(flac_file).info.length)))
+        # SQL文を書き込み
+        f.write("("
+                f"'{title}',"
+                f"'{artist}',"
+                f"{tags['tracknumber'][0]},"
+                f"'{album}',"
+                f"'{length}',"
+                "'flac',"
+                f"'{file_path}'"
+                ")")
+    for mp3_file in mp3_file_list:
+        tags = MP3(mp3_file).tags
+        if not first:
+            f.write(',\n')
+        first = False
+        # メタデータに含まれるアポストロフィをエスケープ処理
+        title = escape_sq(str(tags['TIT2'][0]))
+        artist = escape_sq(str(tags['TPE1'][0]))
+        album = escape_sq(str(tags['TALB'][0]))
+        file_path = escape_sq(mp3_file)
+        length = str(datetime.timedelta(seconds=int(MP3(mp3_file).info.length)))
+        # SQL文を書き込み
+        f.write("("
+                f"'{title}',"
+                f"'{artist}',"
+                f"{str(tags['TRCK'][0]).split('/')[0]},"
+                f"'{album}',"
+                f"'{length}',"
+                "'mp3',"
+                f"'{file_path}'"
+                ")")
+    f.write(';\n')
